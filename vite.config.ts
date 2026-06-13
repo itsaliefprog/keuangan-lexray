@@ -8,51 +8,25 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['vite.svg', 'pwa-192x192.svg', 'pwa-512x512.svg'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Catatan Keuangan Kantor',
-        short_name: 'Keuangan Kantor',
-        description: 'Aplikasi PWA untuk pencatatan keuangan kantor',
-        theme_color: '#3b82f6',
-        background_color: '#ffffff',
+        name: 'Keuangan Lexray',
+        short_name: 'Keuangan Lexray',
+        description: 'Aplikasi Manajemen Keuangan Internal PT Lexray Mitra Abadi',
+        theme_color: '#121212',
+        background_color: '#121212',
         display: 'standalone',
         orientation: 'portrait',
         icons: [
           {
-            src: 'pwa-192x192.svg',
+            src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/svg+xml',
+            type: 'image/png',
           },
           {
-            src: 'pwa-512x512.svg',
+            src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
-          },
-          {
-            src: 'pwa-512x512.svg',
-            sizes: '512x512',
-            type: 'image/svg+xml',
-            purpose: 'any maskable',
-          }
-        ],
-        start_url: '/',
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/api\.example\.com\/.*$/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 72 * 60 * 60, // 3 days
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
+            type: 'image/png',
           },
         ],
       },
