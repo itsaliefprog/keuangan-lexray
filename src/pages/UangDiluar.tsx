@@ -4,22 +4,26 @@ import { useFinance } from '../store/FinanceContext'
 import Modal from '../components/Modal'
 import type { UangDiluarItem } from '../types'
 
+const LAST_DATE_KEY = 'lastUangDiluarDate'
+
 const UangDiluar: React.FC = () => {
   const { state, addUangDiluar, editUangDiluar, deleteUangDiluar } = useFinance()
-  const [nama, setNama] = useState('')
+  const [tanggal, setTanggal] = useState(() => localStorage.getItem(LAST_DATE_KEY) || new Date().toISOString().split('T')[0])
+  const [keterangan, setKeterangan] = useState('')
   const [nominal, setNominal] = useState('')
 
-  // modal
   const [selected, setSelected] = useState<UangDiluarItem | null>(null)
   const [editMode, setEditMode] = useState(false)
-  const [editNama, setEditNama] = useState('')
+  const [editTanggal, setEditTanggal] = useState('')
+  const [editKeterangan, setEditKeterangan] = useState('')
   const [editNominal, setEditNominal] = useState('')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!nama.trim() || !nominal) return
-    addUangDiluar({ id: crypto.randomUUID(), nama: nama.trim(), nominal: Number(nominal) })
-    setNama('')
+    if (!tanggal || !keterangan.trim() || !nominal) return
+    await addUangDiluar({ tanggal, keterangan: keterangan.trim(), nominal: Number(nominal.replace(/\./g, '')) })
+    localStorage.setItem(LAST_DATE_KEY, tanggal)
+    setKeterangan('')
     setNominal('')
   }
 
@@ -30,22 +34,23 @@ const UangDiluar: React.FC = () => {
 
   const openEdit = () => {
     if (!selected) return
-    setEditNama(selected.nama)
+    setEditTanggal(selected.tanggal)
+    setEditKeterangan(selected.keterangan)
     setEditNominal(String(selected.nominal))
     setEditMode(true)
   }
 
-  const saveEdit = () => {
-    if (!selected || !editNama.trim() || !editNominal) return
-    editUangDiluar({ ...selected, nama: editNama.trim(), nominal: Number(editNominal) })
-    setSelected((prev) => prev ? { ...prev, nama: editNama.trim(), nominal: Number(editNominal) } : null)
+  const saveEdit = async () => {
+    if (!selected || !editTanggal || !editKeterangan.trim() || !editNominal) return
+    await editUangDiluar({ ...selected, tanggal: editTanggal, keterangan: editKeterangan.trim(), nominal: Number(editNominal.replace(/\./g, '')) })
+    setSelected((prev) => prev ? { ...prev, tanggal: editTanggal, keterangan: editKeterangan.trim(), nominal: Number(editNominal.replace(/\./g, '')) } : null)
     setEditMode(false)
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selected) return
     if (!window.confirm('Apakah Anda yakin ingin menghapus catatan keuangan ini? Tindakan ini akan mempengaruhi perhitungan total saldo.')) return
-    deleteUangDiluar(selected.id)
+    await deleteUangDiluar(selected.id)
     setSelected(null)
     setEditMode(false)
   }
@@ -61,27 +66,38 @@ const UangDiluar: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Nama / Keterangan</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Tanggal</label>
           <input
-            type="text"
-            value={nama}
-            onChange={(e) => setNama(e.target.value)}
-
+            type="date"
+            value={tanggal}
+            onChange={(e) => setTanggal(e.target.value)}
             className="input"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Nominal (Rp)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Keterangan</label>
           <input
-            type="number"
-            value={nominal}
-            onChange={(e) => setNominal(e.target.value)}
-            placeholder="0"
+            type="text"
+            value={keterangan}
+            onChange={(e) => setKeterangan(e.target.value)}
             className="input"
-            min="0"
             required
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Nominal</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">Rp.</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={nominal}
+              onChange={(e) => setNominal(e.target.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'))}
+              className="input pl-11"
+              required
+            />
+          </div>
         </div>
         <button type="submit" className="btn-primary gap-2">
           <Plus className="w-4 h-4" />
@@ -94,14 +110,15 @@ const UangDiluar: React.FC = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 dark:bg-zinc-900/50 border-b border-gray-200 dark:border-zinc-800">
-                <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Nama / Keterangan</th>
+                <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tanggal</th>
+                <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Keterangan</th>
                 <th className="text-right py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Nominal</th>
               </tr>
             </thead>
             <tbody>
               {state.uangDiluarList.length === 0 ? (
                 <tr>
-                  <td colSpan={2} className="py-12 text-center text-gray-400 dark:text-gray-500">
+                  <td colSpan={3} className="py-12 text-center text-gray-400 dark:text-gray-500">
                     Belum ada data uang di luar.
                   </td>
                 </tr>
@@ -112,7 +129,8 @@ const UangDiluar: React.FC = () => {
                     onClick={() => openDetail(u)}
                     className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-zinc-800 dark:hover:bg-zinc-800/30"
                   >
-                    <td className="py-3 px-3 text-gray-900 dark:text-gray-200">{u.nama}</td>
+                    <td className="py-3 px-3 text-gray-900 dark:text-gray-200">{u.tanggal}</td>
+                    <td className="py-3 px-3 text-gray-900 dark:text-gray-200">{u.keterangan}</td>
                     <td className="py-3 px-3 text-right font-medium text-gray-900 dark:text-gray-200">
                       Rp {u.nominal.toLocaleString('id-ID')}
                     </td>
@@ -122,7 +140,7 @@ const UangDiluar: React.FC = () => {
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-gray-200 dark:border-zinc-700">
-                <td className="py-3 px-3 text-sm font-semibold text-gray-900 dark:text-gray-200">Total Uang di Luar</td>
+                <td colSpan={2} className="py-3 px-3 text-sm font-semibold text-gray-900 dark:text-gray-200">Total Uang di Luar</td>
                 <td className="py-3 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
                   Rp {totalUangDiluar.toLocaleString('id-ID')}
                 </td>
@@ -132,7 +150,6 @@ const UangDiluar: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal */}
       <Modal
         open={!!selected}
         onClose={() => { setSelected(null); setEditMode(false) }}
@@ -141,8 +158,12 @@ const UangDiluar: React.FC = () => {
         {selected && !editMode && (
           <div className="space-y-4">
             <div>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Nama / Keterangan</span>
-              <p className="text-gray-900 font-medium dark:text-gray-100">{selected.nama}</p>
+              <span className="text-xs text-gray-500 dark:text-gray-400">Tanggal</span>
+              <p className="text-gray-900 font-medium dark:text-gray-100">{selected.tanggal}</p>
+            </div>
+            <div>
+              <span className="text-xs text-gray-500 dark:text-gray-400">Keterangan</span>
+              <p className="text-gray-900 font-medium dark:text-gray-100">{selected.keterangan}</p>
             </div>
             <div>
               <span className="text-xs text-gray-500 dark:text-gray-400">Nominal</span>
@@ -161,12 +182,25 @@ const UangDiluar: React.FC = () => {
         {selected && editMode && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Nama / Keterangan</label>
-              <input type="text" value={editNama} onChange={(e) => setEditNama(e.target.value)} className="input" />
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Tanggal</label>
+              <input type="date" value={editTanggal} onChange={(e) => setEditTanggal(e.target.value)} className="input" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Nominal (Rp)</label>
-              <input type="number" value={editNominal} onChange={(e) => setEditNominal(e.target.value)} className="input" min="0" />
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Keterangan</label>
+              <input type="text" value={editKeterangan} onChange={(e) => setEditKeterangan(e.target.value)} className="input" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Nominal</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">Rp.</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={editNominal}
+                  onChange={(e) => setEditNominal(e.target.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'))}
+                  className="input pl-11"
+                />
+              </div>
             </div>
             <div className="flex gap-2 pt-2">
               <button onClick={saveEdit} className="btn-primary flex-1">Simpan</button>

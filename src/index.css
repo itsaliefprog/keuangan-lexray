@@ -41,3 +41,44 @@
     @apply flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900 dark:border-zinc-700 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus-visible:ring-emerald-400;
   }
 }
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  aside,
+  header,
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-area {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    padding: 0 !important;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th {
+    background: #f9fafb !important;
+    color: #111 !important;
+    border-bottom: 2px solid #e5e7eb !important;
+  }
+
+  td {
+    color: #111 !important;
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+}

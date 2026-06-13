@@ -10,9 +10,11 @@ import {
   Layers,
   Moon,
   Sun,
+  LogOut,
 } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 import { useFinance } from '../store/FinanceContext'
+import { supabase } from '../supabaseClient'
 
 const menuItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
@@ -37,6 +39,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   )
   const totalKebutuhan = state.kebutuhanList.reduce((sum, k) => sum + k.nominal, 0)
   const selisih = saldo - totalKebutuhan
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    navigate('/')
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
@@ -134,6 +141,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             {theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center justify-center gap-2 w-full mt-2 px-4 py-2.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors dark:text-red-400 dark:hover:bg-red-950/30"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
           </button>
         </div>
       </aside>

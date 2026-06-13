@@ -8,19 +8,22 @@ const Kebutuhan: React.FC = () => {
   const { state, addKebutuhan, editKebutuhan, deleteKebutuhan, deleteAllKebutuhan } = useFinance()
   const [rincian, setRincian] = useState('')
   const [nominal, setNominal] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  // modal
   const [selected, setSelected] = useState<KebutuhanItem | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [editRincian, setEditRincian] = useState('')
   const [editNominal, setEditNominal] = useState('')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!rincian.trim() || !nominal) return
-    addKebutuhan({ id: crypto.randomUUID(), rincian: rincian.trim(), nominal: Number(nominal.replace(/\./g, '')) })
+    setSubmitting(true)
+    const tanggal = new Date().toISOString().split('T')[0]
+    await addKebutuhan({ tanggal, rincian: rincian.trim(), nominal: Number(nominal.replace(/\./g, '')) })
     setRincian('')
     setNominal('')
+    setSubmitting(false)
   }
 
   const openDetail = (item: KebutuhanItem) => {
@@ -35,17 +38,17 @@ const Kebutuhan: React.FC = () => {
     setEditMode(true)
   }
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!selected || !editRincian.trim() || !editNominal) return
-    editKebutuhan({ ...selected, rincian: editRincian.trim(), nominal: Number(editNominal.replace(/\./g, '')) })
+    await editKebutuhan({ ...selected, rincian: editRincian.trim(), nominal: Number(editNominal.replace(/\./g, '')) })
     setSelected((prev) => prev ? { ...prev, rincian: editRincian.trim(), nominal: Number(editNominal.replace(/\./g, '')) } : null)
     setEditMode(false)
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selected) return
     if (!window.confirm('Apakah Anda yakin ingin menghapus catatan keuangan ini? Tindakan ini akan mempengaruhi perhitungan total saldo.')) return
-    deleteKebutuhan(selected.id)
+    await deleteKebutuhan(selected.id)
     setSelected(null)
     setEditMode(false)
   }
@@ -84,9 +87,9 @@ const Kebutuhan: React.FC = () => {
             />
           </div>
         </div>
-        <button type="submit" className="btn-primary gap-2">
+        <button type="submit" disabled={submitting} className="btn-primary gap-2">
           <Plus className="w-4 h-4" />
-          Tambah Kebutuhan
+          {submitting ? 'Menyimpan...' : 'Tambah Kebutuhan'}
         </button>
       </form>
 
@@ -95,9 +98,9 @@ const Kebutuhan: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-200">Daftar Kebutuhan</h3>
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (window.confirm('Hapus semua data kebutuhan? Tindakan ini tidak dapat dibatalkan.'))
-                  deleteAllKebutuhan()
+                  await deleteAllKebutuhan()
               }}
               className="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
             >
@@ -147,7 +150,6 @@ const Kebutuhan: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal */}
       <Modal
         open={!!selected}
         onClose={() => { setSelected(null); setEditMode(false) }}
