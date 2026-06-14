@@ -85,7 +85,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase
       .from('kebutuhan')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
     if (error) {
       console.error('Gagal memuat kebutuhan:', error.message)
       dispatch({ type: 'SET_KEBUTUHAN', payload: [] })
@@ -98,7 +98,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase
       .from('alur_kas')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
     if (error) {
       console.error('Gagal memuat alur kas:', error.message)
       dispatch({ type: 'SET_ALUR_KAS', payload: [] })
@@ -111,7 +111,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase
       .from('uang_di_luar')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
     if (error) {
       console.error('Gagal memuat uang di luar:', error.message)
       dispatch({ type: 'SET_UANG_DILUAR', payload: [] })

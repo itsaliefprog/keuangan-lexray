@@ -92,21 +92,16 @@ const AlurKas: React.FC = () => {
     return true
   })
 
-  // Running balance for sorted filtered data (ascending by date)
-  const sortedAsc = [...filteredList].sort(
-    (a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime()
-  )
+  // Hitung saldo berjalan — data sudah ascending by created_at (kronologis)
   let runningBalance = 0
   const balanceMap = new Map<string, number>()
-  for (const item of sortedAsc) {
+  for (const item of filteredList) {
     runningBalance += item.jenis === 'pemasukan' ? item.nominal : -item.nominal
     balanceMap.set(item.id, runningBalance)
   }
 
-  // Display sorted descending
-  const sortedList = [...filteredList].sort(
-    (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
-  )
+  // Balik urutan untuk display (terbaru di atas)
+  const displayList = [...filteredList].reverse()
 
   const saldoAkhir = filteredList.reduce((sum, a) => {
     return a.jenis === 'pemasukan' ? sum + a.nominal : sum - a.nominal
@@ -254,14 +249,14 @@ const AlurKas: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {sortedList.length === 0 ? (
+                {displayList.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-12 text-center text-gray-400 dark:text-gray-500">
                       Belum ada pencatatan kas.
                     </td>
                   </tr>
                 ) : (
-                  sortedList.map((a) => {
+                  displayList.map((a) => {
                     const saldo = balanceMap.get(a.id)
                     return (
                       <tr

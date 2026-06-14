@@ -123,7 +123,7 @@ const UangDiluar: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                state.uangDiluarList.map((u) => (
+                [...state.uangDiluarList].reverse().map((u) => (
                   <tr
                     key={u.id}
                     onClick={() => openDetail(u)}

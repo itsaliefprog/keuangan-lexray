@@ -124,7 +124,7 @@ const Kebutuhan: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                state.kebutuhanList.map((k) => (
+                [...state.kebutuhanList].reverse().map((k) => (
                   <tr
                     key={k.id}
                     onClick={() => openDetail(k)}
