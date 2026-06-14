@@ -1,26 +1,61 @@
 import React, { useState } from 'react'
 import { Plus, Pencil, Trash2, FileText } from 'lucide-react'
 import { useFinance } from '../store/FinanceContext'
+import { supabase } from '../supabaseClient'
 import Modal from '../components/Modal'
 import type { KebutuhanItem } from '../types'
 
 const Kebutuhan: React.FC = () => {
-  const { state, addKebutuhan, editKebutuhan, deleteKebutuhan, deleteAllKebutuhan, loadKebutuhan } = useFinance()
+  const { state, addKebutuhan, deleteKebutuhan, deleteAllKebutuhan, loadKebutuhan } = useFinance()
   const [rincian, setRincian] = useState('')
   const [nominal, setNominal] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const [selected, setSelected] = useState<KebutuhanItem | null>(null)
-  const [editMode, setEditMode] = useState(false)
-  const [editRincian, setEditRincian] = useState('')
-  const [editNominal, setEditNominal] = useState('')
+  const [editingItem, setEditingItem] = useState<KebutuhanItem | null>(null)
+
+  const handleEdit = (item: KebutuhanItem) => {
+    setEditingItem(item)
+    setRincian(item.rincian)
+    setNominal(String(item.nominal))
+    setSelected(null)
+  }
+
+  const cancelEdit = () => {
+    setEditingItem(null)
+    setRincian('')
+    setNominal('')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!rincian.trim() || !nominal) return
     setSubmitting(true)
-    const tanggal = new Date().toISOString().split('T')[0]
-    await addKebutuhan({ tanggal, rincian: rincian.trim(), nominal: Number(nominal.replace(/\./g, '')) })
+
+    const parsedNominal = Number(nominal.replace(/\./g, ''))
+
+    if (editingItem) {
+      const { error } = await supabase
+        .from('kebutuhan')
+        .update({
+          rincian: rincian.trim(),
+          nominal: parsedNominal,
+        })
+        .eq('id', editingItem.id)
+
+      if (error) {
+        console.log('Error Update:', error)
+        setSubmitting(false)
+        return
+      }
+
+      await loadKebutuhan()
+      setEditingItem(null)
+    } else {
+      const tanggal = new Date().toISOString().split('T')[0]
+      await addKebutuhan({ tanggal, rincian: rincian.trim(), nominal: parsedNominal })
+    }
+
     setRincian('')
     setNominal('')
     setSubmitting(false)
@@ -28,30 +63,14 @@ const Kebutuhan: React.FC = () => {
 
   const openDetail = (item: KebutuhanItem) => {
     setSelected(item)
-    setEditMode(false)
-  }
-
-  const openEdit = () => {
-    if (!selected) return
-    setEditRincian(selected.rincian)
-    setEditNominal(String(selected.nominal))
-    setEditMode(true)
-  }
-
-  const saveEdit = async () => {
-    if (!selected || !editRincian.trim() || !editNominal) return
-    await editKebutuhan({ ...selected, rincian: editRincian.trim(), nominal: Number(editNominal.replace(/\./g, '')) })
-    await loadKebutuhan()
-    setSelected(null)
-    setEditMode(false)
   }
 
   const handleDelete = async () => {
     if (!selected) return
     if (!window.confirm('Apakah Anda yakin ingin menghapus catatan keuangan ini? Tindakan ini akan mempengaruhi perhitungan total saldo.')) return
     await deleteKebutuhan(selected.id)
+    await loadKebutuhan()
     setSelected(null)
-    setEditMode(false)
   }
 
   const totalKebutuhan = state.kebutuhanList.reduce((sum, k) => sum + k.nominal, 0)
@@ -88,10 +107,17 @@ const Kebutuhan: React.FC = () => {
             />
           </div>
         </div>
-        <button type="submit" disabled={submitting} className="btn-primary gap-2">
-          <Plus className="w-4 h-4" />
-          {submitting ? 'Menyimpan...' : 'Tambah Kebutuhan'}
-        </button>
+        <div className="flex gap-2">
+          <button type="submit" disabled={submitting} className="btn-primary gap-2">
+            {editingItem ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {submitting ? 'Menyimpan...' : editingItem ? 'Simpan Perubahan' : 'Tambah Kebutuhan'}
+          </button>
+          {editingItem && (
+            <button type="button" onClick={cancelEdit} className="btn-secondary">
+              Batal
+            </button>
+          )}
+        </div>
       </form>
 
       <div className="card">
@@ -115,12 +141,13 @@ const Kebutuhan: React.FC = () => {
               <tr className="bg-gray-50 dark:bg-zinc-900/50 border-b border-gray-200 dark:border-zinc-800">
                 <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Rincian</th>
                 <th className="text-right py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Nominal</th>
+                <th className="py-3 px-3 w-10"></th>
               </tr>
             </thead>
             <tbody>
               {state.kebutuhanList.length === 0 ? (
                 <tr>
-                  <td colSpan={2} className="py-12 text-center text-gray-400 dark:text-gray-500">
+                  <td colSpan={3} className="py-12 text-center text-gray-400 dark:text-gray-500">
                     Belum ada kebutuhan.
                   </td>
                 </tr>
@@ -135,6 +162,16 @@ const Kebutuhan: React.FC = () => {
                     <td className="py-3 px-3 text-right font-medium text-gray-900 dark:text-gray-200">
                       Rp {k.nominal.toLocaleString('id-ID')}
                     </td>
+                    <td className="py-3 px-3">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleEdit(k) }}
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                        title="Edit"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -145,6 +182,7 @@ const Kebutuhan: React.FC = () => {
                 <td className="py-3 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
                   Rp {totalKebutuhan.toLocaleString('id-ID')}
                 </td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
@@ -153,10 +191,10 @@ const Kebutuhan: React.FC = () => {
 
       <Modal
         open={!!selected}
-        onClose={() => { setSelected(null); setEditMode(false) }}
-        title={editMode ? 'Edit Kebutuhan' : 'Detail Kebutuhan'}
+        onClose={() => { setSelected(null) }}
+        title="Detail Kebutuhan"
       >
-        {selected && !editMode && (
+        {selected && (
           <div className="space-y-4">
             <div>
               <span className="text-xs text-gray-500 dark:text-gray-400">Rincian</span>
@@ -167,45 +205,11 @@ const Kebutuhan: React.FC = () => {
               <p className="text-gray-900 font-medium dark:text-gray-100">Rp {selected.nominal.toLocaleString('id-ID')}</p>
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={openEdit} className="btn-primary flex-1 gap-2">
+              <button onClick={() => { handleEdit(selected); setSelected(null) }} className="btn-primary flex-1 gap-2">
                 <Pencil className="w-4 h-4" /> Edit Data
               </button>
               <button onClick={handleDelete} className="btn flex-1 gap-2 bg-red-600 text-white hover:bg-red-700 h-10 px-4 rounded-md dark:bg-red-700 dark:hover:bg-red-800">
                 <Trash2 className="w-4 h-4" /> Hapus Data
-              </button>
-            </div>
-          </div>
-        )}
-        {selected && editMode && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Rincian</label>
-              <input
-                type="text"
-                value={editRincian}
-                onChange={(e) => setEditRincian(e.target.value)}
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Nominal</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">Rp.</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={editNominal}
-                  onChange={(e) => setEditNominal(e.target.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'))}
-                  className="input pl-11"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button onClick={saveEdit} className="btn-primary flex-1">
-                Simpan
-              </button>
-              <button onClick={() => setEditMode(false)} className="btn-secondary flex-1">
-                Batal
               </button>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Plus, Pencil, Trash2, ArrowUpRight, ArrowDownRight, Repeat, Printer } from 'lucide-react'
 import { useFinance } from '../store/FinanceContext'
+import { supabase } from '../supabaseClient'
 import Modal from '../components/Modal'
 import type { AlurKasItem } from '../types'
 
@@ -11,7 +12,7 @@ function formatRp(value: number): string {
 }
 
 const AlurKas: React.FC = () => {
-  const { state, addAlurKas, editAlurKas, deleteAlurKas, loadAlurKas } = useFinance()
+  const { state, addAlurKas, deleteAlurKas, loadAlurKas } = useFinance()
   const [tanggal, setTanggal] = useState(() => localStorage.getItem(LAST_DATE_KEY) || '')
   const [rincian, setRincian] = useState('')
   const [jenis, setJenis] = useState<'pemasukan' | 'pengeluaran'>('pemasukan')
@@ -24,24 +25,61 @@ const AlurKas: React.FC = () => {
 
   // modal
   const [selected, setSelected] = useState<AlurKasItem | null>(null)
-  const [editMode, setEditMode] = useState(false)
-  const [editTanggal, setEditTanggal] = useState('')
-  const [editRincian, setEditRincian] = useState('')
-  const [editJenis, setEditJenis] = useState<'pemasukan' | 'pengeluaran'>('pemasukan')
-  const [editNominal, setEditNominal] = useState('')
+  const [editingItem, setEditingItem] = useState<AlurKasItem | null>(null)
+
+  const handleEdit = (item: AlurKasItem) => {
+    setEditingItem(item)
+    setTanggal(item.tanggal)
+    setRincian(item.rincian)
+    setJenis(item.jenis)
+    setNominal(String(item.nominal))
+    setSelected(null)
+  }
+
+  const cancelEdit = () => {
+    setEditingItem(null)
+    setTanggal(localStorage.getItem(LAST_DATE_KEY) || '')
+    setRincian('')
+    setJenis('pemasukan')
+    setNominal('')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!tanggal || !rincian.trim() || !nominal) return
     setSubmitting(true)
-    await addAlurKas({
-      tanggal,
-      rincian: rincian.trim(),
-      jenis,
-      nominal: Number(nominal.replace(/\./g, '')),
-    })
-    await loadAlurKas()
-    localStorage.setItem(LAST_DATE_KEY, tanggal)
+
+    const parsedNominal = Number(nominal.replace(/\./g, ''))
+
+    if (editingItem) {
+      const { error } = await supabase
+        .from('alur_kas')
+        .update({
+          tanggal,
+          rincian: rincian.trim(),
+          jenis,
+          nominal: parsedNominal,
+        })
+        .eq('id', editingItem.id)
+
+      if (error) {
+        console.log('Error Update:', error)
+        setSubmitting(false)
+        return
+      }
+
+      await loadAlurKas()
+      setEditingItem(null)
+    } else {
+      await addAlurKas({
+        tanggal,
+        rincian: rincian.trim(),
+        jenis,
+        nominal: parsedNominal,
+      })
+      localStorage.setItem(LAST_DATE_KEY, tanggal)
+    }
+
     setRincian('')
     setNominal('')
     setSubmitting(false)
@@ -49,30 +87,6 @@ const AlurKas: React.FC = () => {
 
   const openDetail = (item: AlurKasItem) => {
     setSelected(item)
-    setEditMode(false)
-  }
-
-  const openEdit = () => {
-    if (!selected) return
-    setEditTanggal(selected.tanggal)
-    setEditRincian(selected.rincian)
-    setEditJenis(selected.jenis)
-    setEditNominal(String(selected.nominal))
-    setEditMode(true)
-  }
-
-  const saveEdit = async () => {
-    if (!selected || !editTanggal || !editRincian.trim() || !editNominal) return
-    await editAlurKas({
-      ...selected,
-      tanggal: editTanggal,
-      rincian: editRincian.trim(),
-      jenis: editJenis,
-      nominal: Number(editNominal.replace(/\./g, '')),
-    })
-    await loadAlurKas()
-    setSelected(null)
-    setEditMode(false)
   }
 
   const handleDelete = async () => {
@@ -81,7 +95,6 @@ const AlurKas: React.FC = () => {
     await deleteAlurKas(selected.id)
     await loadAlurKas()
     setSelected(null)
-    setEditMode(false)
   }
 
   // Filter data by date range
@@ -192,10 +205,17 @@ const AlurKas: React.FC = () => {
               />
             </div>
           </div>
-          <button type="submit" disabled={submitting} className="btn-primary gap-2">
-            <Plus className="w-4 h-4" />
-            {submitting ? 'Menyimpan...' : 'Tambah Pencatatan'}
-          </button>
+          <div className="flex gap-2">
+            <button type="submit" disabled={submitting} className="btn-primary gap-2">
+              {editingItem ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {submitting ? 'Menyimpan...' : editingItem ? 'Simpan Perubahan' : 'Tambah Pencatatan'}
+            </button>
+            {editingItem && (
+              <button type="button" onClick={cancelEdit} className="btn-secondary">
+                Batal
+              </button>
+            )}
+          </div>
         </form>
 
         {/* Filter + Cetak - hidden saat print */}
@@ -247,12 +267,13 @@ const AlurKas: React.FC = () => {
                   <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Jenis</th>
                   <th className="text-right py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Nominal</th>
                   <th className="text-right py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Saldo</th>
+                  <th className="py-3 px-3 w-10"></th>
                 </tr>
               </thead>
               <tbody>
                 {displayList.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-gray-400 dark:text-gray-500">
+                    <td colSpan={6} className="py-12 text-center text-gray-400 dark:text-gray-500">
                       Belum ada pencatatan kas.
                     </td>
                   </tr>
@@ -288,6 +309,16 @@ const AlurKas: React.FC = () => {
                         <td className="py-3 px-3 text-right font-semibold text-gray-900 dark:text-gray-200">
                           Rp {(a.saldo_berjalan ?? 0).toLocaleString('id-ID')}
                         </td>
+                        <td className="py-3 px-3">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleEdit(a) }}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        </td>
                       </tr>
                     ))
                 )}
@@ -299,10 +330,10 @@ const AlurKas: React.FC = () => {
         {/* Modal */}
         <Modal
           open={!!selected}
-          onClose={() => { setSelected(null); setEditMode(false) }}
-          title={editMode ? 'Edit Alur Kas' : 'Detail Alur Kas'}
+          onClose={() => { setSelected(null) }}
+          title="Detail Alur Kas"
         >
-          {selected && !editMode && (
+          {selected && (
             <div className="space-y-4">
               <div>
                 <span className="text-xs text-gray-500 dark:text-gray-400">Tanggal</span>
@@ -323,68 +354,12 @@ const AlurKas: React.FC = () => {
                 <p className="text-gray-900 font-medium dark:text-gray-100">Rp {selected.nominal.toLocaleString('id-ID')}</p>
               </div>
               <div className="flex gap-2 pt-2">
-                <button onClick={openEdit} className="btn-primary flex-1 gap-2">
+                <button onClick={() => { handleEdit(selected); setSelected(null) }} className="btn-primary flex-1 gap-2">
                   <Pencil className="w-4 h-4" /> Edit Data
                 </button>
                 <button onClick={handleDelete} className="btn flex-1 gap-2 bg-red-600 text-white hover:bg-red-700 h-10 px-4 rounded-md dark:bg-red-700 dark:hover:bg-red-800">
                   <Trash2 className="w-4 h-4" /> Hapus Data
                 </button>
-              </div>
-            </div>
-          )}
-          {selected && editMode && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Tanggal</label>
-                <input type="date" value={editTanggal} onChange={(e) => setEditTanggal(e.target.value)} className="input" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Rincian</label>
-                <input type="text" value={editRincian} onChange={(e) => setEditRincian(e.target.value)} className="input" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Jenis</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditJenis('pemasukan')}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                      editJenis === 'pemasukan'
-                        ? 'bg-green-50 border-green-400 text-green-700 dark:bg-green-900 dark:border-green-600 dark:text-green-300'
-                        : 'border-gray-300 text-gray-600 dark:border-zinc-600 dark:text-gray-400'
-                    }`}
-                  >
-                    Pemasukan
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditJenis('pengeluaran')}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                      editJenis === 'pengeluaran'
-                        ? 'bg-red-50 border-red-400 text-red-700 dark:bg-red-900 dark:border-red-600 dark:text-red-300'
-                        : 'border-gray-300 text-gray-600 dark:border-zinc-600 dark:text-gray-400'
-                    }`}
-                  >
-                    Pengeluaran
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Nominal</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">Rp.</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={editNominal}
-                    onChange={(e) => setEditNominal(e.target.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'))}
-                    className="input pl-11"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button onClick={saveEdit} className="btn-primary flex-1">Simpan</button>
-                <button onClick={() => setEditMode(false)} className="btn-secondary flex-1">Batal</button>
               </div>
             </div>
           )}
