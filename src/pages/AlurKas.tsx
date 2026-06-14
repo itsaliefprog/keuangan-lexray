@@ -92,20 +92,22 @@ const AlurKas: React.FC = () => {
     return true
   })
 
-  // Hitung saldo berjalan — data sudah ascending by created_at (kronologis)
-  let runningBalance = 0
-  const balanceMap = new Map<string, number>()
-  for (const item of filteredList) {
-    runningBalance += item.jenis === 'pemasukan' ? item.nominal : -item.nominal
-    balanceMap.set(item.id, runningBalance)
-  }
+  // 1. Hitung saldo berjalan kronologis (ASC = tertua → terbaru)
+  let currentSaldo = 0
+  const calculatedData = filteredList.map((item) => {
+    if (item.jenis === 'pemasukan') {
+      currentSaldo += Number(item.nominal)
+    } else if (item.jenis === 'pengeluaran') {
+      currentSaldo -= Number(item.nominal)
+    }
+    return { ...item, saldo_berjalan: currentSaldo }
+  })
 
-  // Balik urutan untuk display (terbaru di atas)
-  const displayList = [...filteredList].reverse()
+  // 2. Balik urutan untuk tabel UI (terbaru di atas)
+  const displayList = [...calculatedData].reverse()
 
-  const saldoAkhir = filteredList.reduce((sum, a) => {
-    return a.jenis === 'pemasukan' ? sum + a.nominal : sum - a.nominal
-  }, 0)
+  // 3. Saldo akhir = akumulasi terakhir dari data kronologis
+  const saldoAkhir = currentSaldo
 
   const handlePrint = () => {
     window.print()
@@ -256,9 +258,7 @@ const AlurKas: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  displayList.map((a) => {
-                    const saldo = balanceMap.get(a.id)
-                    return (
+                  displayList.map((a) => (
                       <tr
                         key={a.id}
                         onClick={() => openDetail(a)}
@@ -287,11 +287,10 @@ const AlurKas: React.FC = () => {
                           Rp {a.nominal.toLocaleString('id-ID')}
                         </td>
                         <td className="py-3 px-3 text-right font-semibold text-gray-900 dark:text-gray-200">
-                          Rp {(saldo ?? 0).toLocaleString('id-ID')}
+                          Rp {(a.saldo_berjalan ?? 0).toLocaleString('id-ID')}
                         </td>
                       </tr>
-                    )
-                  })
+                    ))
                 )}
               </tbody>
             </table>

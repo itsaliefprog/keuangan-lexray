@@ -16,7 +16,7 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
     case 'SET_KEBUTUHAN':
       return { ...state, kebutuhanList: action.payload, loading: false }
     case 'ADD_KEBUTUHAN':
-      return { ...state, kebutuhanList: [action.payload, ...state.kebutuhanList] }
+      return { ...state, kebutuhanList: [...state.kebutuhanList, action.payload] }
     case 'EDIT_KEBUTUHAN':
       return {
         ...state,
@@ -31,7 +31,7 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
     case 'SET_ALUR_KAS':
       return { ...state, alurKasList: action.payload, loading: false }
     case 'ADD_ALUR_KAS':
-      return { ...state, alurKasList: [action.payload, ...state.alurKasList] }
+      return { ...state, alurKasList: [...state.alurKasList, action.payload] }
     case 'EDIT_ALUR_KAS':
       return {
         ...state,
@@ -44,7 +44,7 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
     case 'SET_UANG_DILUAR':
       return { ...state, uangDiluarList: action.payload, loading: false }
     case 'ADD_UANG_DILUAR':
-      return { ...state, uangDiluarList: [action.payload, ...state.uangDiluarList] }
+      return { ...state, uangDiluarList: [...state.uangDiluarList, action.payload] }
     case 'EDIT_UANG_DILUAR':
       return {
         ...state,
