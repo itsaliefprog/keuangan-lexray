@@ -7,7 +7,7 @@ import type { UangDiluarItem } from '../types'
 const LAST_DATE_KEY = 'lastUangDiluarDate'
 
 const UangDiluar: React.FC = () => {
-  const { state, addUangDiluar, editUangDiluar, deleteUangDiluar } = useFinance()
+  const { state, addUangDiluar, editUangDiluar, deleteUangDiluar, loadUangDiluar } = useFinance()
   const [tanggal, setTanggal] = useState(() => localStorage.getItem(LAST_DATE_KEY) || new Date().toISOString().split('T')[0])
   const [keterangan, setKeterangan] = useState('')
   const [nominal, setNominal] = useState('')
@@ -43,7 +43,8 @@ const UangDiluar: React.FC = () => {
   const saveEdit = async () => {
     if (!selected || !editTanggal || !editKeterangan.trim() || !editNominal) return
     await editUangDiluar({ ...selected, tanggal: editTanggal, keterangan: editKeterangan.trim(), nominal: Number(editNominal.replace(/\./g, '')) })
-    setSelected((prev) => prev ? { ...prev, tanggal: editTanggal, keterangan: editKeterangan.trim(), nominal: Number(editNominal.replace(/\./g, '')) } : null)
+    await loadUangDiluar()
+    setSelected(null)
     setEditMode(false)
   }
 

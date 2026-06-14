@@ -70,11 +70,8 @@ const AlurKas: React.FC = () => {
       jenis: editJenis,
       nominal: Number(editNominal.replace(/\./g, '')),
     })
-    setSelected((prev) =>
-      prev
-        ? { ...prev, tanggal: editTanggal, rincian: editRincian.trim(), jenis: editJenis, nominal: Number(editNominal.replace(/\./g, '')) }
-        : null
-    )
+    await loadAlurKas()
+    setSelected(null)
     setEditMode(false)
   }
 

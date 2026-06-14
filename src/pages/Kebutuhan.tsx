@@ -5,7 +5,7 @@ import Modal from '../components/Modal'
 import type { KebutuhanItem } from '../types'
 
 const Kebutuhan: React.FC = () => {
-  const { state, addKebutuhan, editKebutuhan, deleteKebutuhan, deleteAllKebutuhan } = useFinance()
+  const { state, addKebutuhan, editKebutuhan, deleteKebutuhan, deleteAllKebutuhan, loadKebutuhan } = useFinance()
   const [rincian, setRincian] = useState('')
   const [nominal, setNominal] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -41,7 +41,8 @@ const Kebutuhan: React.FC = () => {
   const saveEdit = async () => {
     if (!selected || !editRincian.trim() || !editNominal) return
     await editKebutuhan({ ...selected, rincian: editRincian.trim(), nominal: Number(editNominal.replace(/\./g, '')) })
-    setSelected((prev) => prev ? { ...prev, rincian: editRincian.trim(), nominal: Number(editNominal.replace(/\./g, '')) } : null)
+    await loadKebutuhan()
+    setSelected(null)
     setEditMode(false)
   }
 
