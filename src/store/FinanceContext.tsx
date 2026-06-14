@@ -85,8 +85,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase
       .from('kebutuhan')
       .select('*')
-      .order('tanggal', { ascending: false })
-      .order('id', { ascending: false })
+      .order('created_at', { ascending: false })
     if (error) {
       console.error('Gagal memuat kebutuhan:', error.message)
       dispatch({ type: 'SET_KEBUTUHAN', payload: [] })
@@ -99,8 +98,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase
       .from('alur_kas')
       .select('*')
-      .order('tanggal', { ascending: false })
-      .order('id', { ascending: false })
+      .order('created_at', { ascending: false })
     if (error) {
       console.error('Gagal memuat alur kas:', error.message)
       dispatch({ type: 'SET_ALUR_KAS', payload: [] })
@@ -113,8 +111,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase
       .from('uang_di_luar')
       .select('*')
-      .order('tanggal', { ascending: false })
-      .order('id', { ascending: false })
+      .order('created_at', { ascending: false })
     if (error) {
       console.error('Gagal memuat uang di luar:', error.message)
       dispatch({ type: 'SET_UANG_DILUAR', payload: [] })
@@ -127,8 +124,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     Promise.all([loadKebutuhan(), loadAlurKas(), loadUangDiluar()])
   }, [loadKebutuhan, loadAlurKas, loadUangDiluar])
 
-  const addKebutuhan = useCallback(async (item: Omit<KebutuhanItem, 'id'>) => {
-    const newItem: KebutuhanItem = { ...item, id: crypto.randomUUID() }
+  const addKebutuhan = useCallback(async (item: Omit<KebutuhanItem, 'id' | 'created_at'>) => {
+    const newItem: KebutuhanItem = { ...item, id: crypto.randomUUID(), created_at: new Date().toISOString() }
     const { error } = await supabase.from('kebutuhan').insert(newItem)
     if (error) {
       console.error('Gagal menambah kebutuhan:', error.message)
@@ -164,8 +161,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'DELETE_ALL_KEBUTUHAN' })
   }, [])
 
-  const addAlurKas = useCallback(async (item: Omit<AlurKasItem, 'id'>) => {
-    const newItem: AlurKasItem = { ...item, id: crypto.randomUUID() }
+  const addAlurKas = useCallback(async (item: Omit<AlurKasItem, 'id' | 'created_at'>) => {
+    const newItem: AlurKasItem = { ...item, id: crypto.randomUUID(), created_at: new Date().toISOString() }
     const { error } = await supabase.from('alur_kas').insert(newItem)
     if (error) {
       console.error('Gagal menambah alur kas:', error.message)
@@ -192,8 +189,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'DELETE_ALUR_KAS', payload: id })
   }, [])
 
-  const addUangDiluar = useCallback(async (item: Omit<UangDiluarItem, 'id'>) => {
-    const newItem: UangDiluarItem = { ...item, id: crypto.randomUUID() }
+  const addUangDiluar = useCallback(async (item: Omit<UangDiluarItem, 'id' | 'created_at'>) => {
+    const newItem: UangDiluarItem = { ...item, id: crypto.randomUUID(), created_at: new Date().toISOString() }
     const { error } = await supabase.from('uang_di_luar').insert(newItem)
     if (error) {
       console.error('Gagal menambah uang di luar:', error.message)

@@ -3,6 +3,7 @@ export interface KebutuhanItem {
   tanggal: string
   rincian: string
   nominal: number
+  created_at?: string
 }
 
 export interface AlurKasItem {
@@ -11,6 +12,7 @@ export interface AlurKasItem {
   rincian: string
   jenis: 'pemasukan' | 'pengeluaran'
   nominal: number
+  created_at?: string
 }
 
 export interface UangDiluarItem {
@@ -18,6 +20,7 @@ export interface UangDiluarItem {
   tanggal: string
   keterangan: string
   nominal: number
+  created_at?: string
 }
 
 export interface FinanceState {
