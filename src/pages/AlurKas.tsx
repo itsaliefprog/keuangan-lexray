@@ -11,7 +11,7 @@ function formatRp(value: number): string {
 }
 
 const AlurKas: React.FC = () => {
-  const { state, addAlurKas, editAlurKas, deleteAlurKas } = useFinance()
+  const { state, addAlurKas, editAlurKas, deleteAlurKas, loadAlurKas } = useFinance()
   const [tanggal, setTanggal] = useState(() => localStorage.getItem(LAST_DATE_KEY) || '')
   const [rincian, setRincian] = useState('')
   const [jenis, setJenis] = useState<'pemasukan' | 'pengeluaran'>('pemasukan')
@@ -40,6 +40,7 @@ const AlurKas: React.FC = () => {
       jenis,
       nominal: Number(nominal.replace(/\./g, '')),
     })
+    await loadAlurKas()
     localStorage.setItem(LAST_DATE_KEY, tanggal)
     setRincian('')
     setNominal('')
@@ -81,6 +82,7 @@ const AlurKas: React.FC = () => {
     if (!selected) return
     if (!window.confirm('Apakah Anda yakin ingin menghapus catatan keuangan ini? Tindakan ini akan mempengaruhi perhitungan total saldo.')) return
     await deleteAlurKas(selected.id)
+    await loadAlurKas()
     setSelected(null)
     setEditMode(false)
   }
