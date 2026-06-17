@@ -19,6 +19,7 @@ export interface UangDiluarItem {
   id: string
   tanggal: string
   keterangan: string
+  jenis: 'uang di luar' | 'uang kembali'
   nominal: number
   created_at?: string
 }

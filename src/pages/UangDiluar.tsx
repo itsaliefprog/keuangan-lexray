@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Plus, Pencil, Trash2, X, Send } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Send, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { useFinance } from '../store/FinanceContext'
 import { supabase } from '../supabaseClient'
 import type { UangDiluarItem } from '../types'
@@ -10,6 +10,8 @@ const UangDiluar: React.FC = () => {
   const { state, addUangDiluar, deleteUangDiluar, loadUangDiluar } = useFinance()
   const [tanggal, setTanggal] = useState(() => localStorage.getItem(LAST_DATE_KEY) || new Date().toISOString().split('T')[0])
   const [keterangan, setKeterangan] = useState('')
+  const [jenis, setJenis] = useState<'uang di luar' | 'uang kembali'>('uang di luar')
+  const [submitting, setSubmitting] = useState(false)
   const [nominal, setNominal] = useState('')
 
   const [activeRowId, setActiveRowId] = useState<string | null>(null)
@@ -18,6 +20,7 @@ const UangDiluar: React.FC = () => {
   const [editingItem, setEditingItem] = useState<UangDiluarItem | null>(null)
   const [modalTanggal, setModalTanggal] = useState('')
   const [modalKeterangan, setModalKeterangan] = useState('')
+  const [modalJenis, setModalJenis] = useState<'uang di luar' | 'uang kembali'>('uang di luar')
   const [modalNominal, setModalNominal] = useState('')
   const [modalSubmitting, setModalSubmitting] = useState(false)
 
@@ -25,6 +28,7 @@ const UangDiluar: React.FC = () => {
     setEditingItem(item)
     setModalTanggal(item.tanggal)
     setModalKeterangan(item.keterangan)
+    setModalJenis(item.jenis)
     setModalNominal(String(item.nominal))
     setIsEditModalOpen(true)
   }
@@ -34,6 +38,7 @@ const UangDiluar: React.FC = () => {
     setEditingItem(null)
     setModalTanggal('')
     setModalKeterangan('')
+    setModalJenis('uang di luar')
     setModalNominal('')
   }
 
@@ -49,6 +54,7 @@ const UangDiluar: React.FC = () => {
       .update({
         tanggal: modalTanggal,
         keterangan: modalKeterangan.trim(),
+        jenis: modalJenis,
         nominal: parsedNominal,
       })
       .eq('id', editingItem.id)
@@ -74,16 +80,39 @@ const UangDiluar: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!tanggal || !keterangan.trim() || !nominal) return
+    setSubmitting(true)
 
     const parsedNominal = Number(nominal.replace(/\./g, ''))
-    await addUangDiluar({ tanggal, keterangan: keterangan.trim(), nominal: parsedNominal })
+
+    await addUangDiluar({
+      tanggal,
+      keterangan: keterangan.trim(),
+      jenis,
+      nominal: parsedNominal,
+    })
     localStorage.setItem(LAST_DATE_KEY, tanggal)
 
     setKeterangan('')
     setNominal('')
+    setSubmitting(false)
   }
 
-  const totalUangDiluar = state.uangDiluarList.reduce((sum, u) => sum + u.nominal, 0)
+  // 1. Hitung sisa uang di luar berjalan kronologis (ASC = tertua → terbaru)
+  let currentSisa = 0
+  const calculatedData = state.uangDiluarList.map((item) => {
+    if (item.jenis === 'uang di luar') {
+      currentSisa += Number(item.nominal)
+    } else if (item.jenis === 'uang kembali') {
+      currentSisa -= Number(item.nominal)
+    }
+    return { ...item, sisa_uang_di_luar: currentSisa }
+  })
+
+  // 2. Balik urutan untuk tabel UI (terbaru di atas)
+  const displayList = [...calculatedData].reverse()
+
+  // 3. Total akhir = akumulasi terakhir dari data kronologis
+  const totalSisa = currentSisa
 
   return (
     <div className="space-y-6">
@@ -91,6 +120,15 @@ const UangDiluar: React.FC = () => {
         <Send className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
         Uang di Luar
       </h2>
+
+      <div className="card">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Sisa Uang di Luar</span>
+          <span className="text-xl font-bold text-gray-900 dark:text-white">
+            Rp {totalSisa.toLocaleString('id-ID')}
+          </span>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
@@ -114,6 +152,33 @@ const UangDiluar: React.FC = () => {
           />
         </div>
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Jenis Transaksi</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setJenis('uang di luar')}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                jenis === 'uang di luar'
+                  ? 'bg-red-50 border-red-400 text-red-700 dark:bg-red-900 dark:border-red-600 dark:text-red-300'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-zinc-600 dark:text-gray-400 dark:hover:bg-zinc-800'
+              }`}
+            >
+              Uang di Luar
+            </button>
+            <button
+              type="button"
+              onClick={() => setJenis('uang kembali')}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                jenis === 'uang kembali'
+                  ? 'bg-green-50 border-green-400 text-green-700 dark:bg-green-900 dark:border-green-600 dark:text-green-300'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-zinc-600 dark:text-gray-400 dark:hover:bg-zinc-800'
+              }`}
+            >
+              Uang Kembali
+            </button>
+          </div>
+        </div>
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Nominal</label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">Rp.</span>
@@ -127,9 +192,9 @@ const UangDiluar: React.FC = () => {
             />
           </div>
         </div>
-        <button type="submit" className="btn-primary gap-2">
+        <button type="submit" disabled={submitting} className="btn-primary gap-2">
           <Plus className="w-4 h-4" />
-          Tambah Uang di Luar
+          {submitting ? 'Menyimpan...' : 'Tambah Uang di Luar'}
         </button>
       </form>
 
@@ -140,18 +205,20 @@ const UangDiluar: React.FC = () => {
               <tr className="bg-gray-50 dark:bg-zinc-900/50 border-b border-gray-200 dark:border-zinc-800">
                 <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tanggal</th>
                 <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Keterangan</th>
+                <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Jenis</th>
                 <th className="text-right py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Nominal</th>
+                <th className="text-right py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Sisa Uang di Luar</th>
               </tr>
             </thead>
             <tbody>
-              {state.uangDiluarList.length === 0 ? (
+              {displayList.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="py-12 text-center text-gray-400 dark:text-gray-500">
+                  <td colSpan={5} className="py-12 text-center text-gray-400 dark:text-gray-500">
                     Belum ada data uang di luar.
                   </td>
                 </tr>
               ) : (
-                [...state.uangDiluarList].reverse().map((u) => (
+                displayList.map((u) => (
                   <React.Fragment key={u.id}>
                     <tr
                       onClick={() => setActiveRowId(activeRowId === u.id ? null : u.id)}
@@ -161,13 +228,33 @@ const UangDiluar: React.FC = () => {
                     >
                       <td className="py-3 px-3 text-gray-900 dark:text-gray-200">{u.tanggal}</td>
                       <td className="py-3 px-3 text-gray-900 dark:text-gray-200">{u.keterangan}</td>
-                      <td className="py-3 px-3 text-right font-medium text-gray-900 dark:text-gray-200">
+                      <td className="py-3 px-3">
+                        <span
+                          className={`inline-flex items-center gap-1 text-xs font-medium ${
+                            u.jenis === 'uang di luar' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                          }`}
+                        >
+                          {u.jenis === 'uang di luar' ? (
+                            <><ArrowUpRight className="w-3 h-3" /> Uang di Luar</>
+                          ) : (
+                            <><ArrowDownRight className="w-3 h-3" /> Uang Kembali</>
+                          )}
+                        </span>
+                      </td>
+                      <td
+                        className={`py-3 px-3 text-right font-medium ${
+                          u.jenis === 'uang di luar' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
+                        }`}
+                      >
                         Rp {u.nominal.toLocaleString('id-ID')}
+                      </td>
+                      <td className="py-3 px-3 text-right font-semibold text-gray-900 dark:text-gray-200">
+                        Rp {(u.sisa_uang_di_luar ?? 0).toLocaleString('id-ID')}
                       </td>
                     </tr>
                     {activeRowId === u.id && (
                       <tr className="bg-gray-50 dark:bg-zinc-900/50 border-b border-gray-200 dark:border-zinc-800">
-                        <td colSpan={3} className="py-2 px-3">
+                        <td colSpan={5} className="py-2 px-3">
                           <div className="flex items-center gap-3">
                             <button
                               type="button"
@@ -191,14 +278,6 @@ const UangDiluar: React.FC = () => {
                 ))
               )}
             </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-gray-200 dark:border-zinc-700">
-                <td colSpan={2} className="py-3 px-3 text-sm font-semibold text-gray-900 dark:text-gray-200">Total Uang di Luar</td>
-                <td className="py-3 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                  Rp {totalUangDiluar.toLocaleString('id-ID')}
-                </td>
-              </tr>
-            </tfoot>
           </table>
         </div>
       </div>
@@ -237,6 +316,33 @@ const UangDiluar: React.FC = () => {
                   className="input"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Jenis Transaksi</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalJenis('uang di luar')}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      modalJenis === 'uang di luar'
+                        ? 'bg-red-50 border-red-400 text-red-700 dark:bg-red-900 dark:border-red-600 dark:text-red-300'
+                        : 'border-gray-300 text-gray-600 dark:border-zinc-600 dark:text-gray-400'
+                    }`}
+                  >
+                    Uang di Luar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalJenis('uang kembali')}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      modalJenis === 'uang kembali'
+                        ? 'bg-green-50 border-green-400 text-green-700 dark:bg-green-900 dark:border-green-600 dark:text-green-300'
+                        : 'border-gray-300 text-gray-600 dark:border-zinc-600 dark:text-gray-400'
+                    }`}
+                  >
+                    Uang Kembali
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Nominal</label>
