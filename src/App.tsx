@@ -29,8 +29,14 @@ function App() {
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen" style={{ backgroundColor: '#121212' }}>
+        <div className="flex items-center justify-center min-h-screen">
+          <img
+            src="/loading-logo.png"
+            alt="Lexray"
+            className="w-32 h-32 md:w-40 md:h-40 animate-pulse"
+          />
+        </div>
       </div>
     )
   }
