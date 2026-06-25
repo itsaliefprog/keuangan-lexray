@@ -8,7 +8,6 @@ export interface KebutuhanItem {
 
 export interface AlurKasItem {
   id: string
-  tanggal: string
   rincian: string
   jenis: 'pemasukan' | 'pengeluaran'
   nominal: number

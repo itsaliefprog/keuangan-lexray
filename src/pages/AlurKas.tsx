@@ -4,18 +4,22 @@ import { useFinance } from '../store/FinanceContext'
 import { supabase } from '../supabaseClient'
 import type { AlurKasItem } from '../types'
 
-const LAST_DATE_KEY = 'lastAlurKasDate'
-
 function formatRp(value: number): string {
   return 'Rp ' + value.toLocaleString('id-ID')
 }
 
+function toDatetimeLocalValue(date: Date): string {
+  const offset = date.getTimezoneOffset()
+  const local = new Date(date.getTime() - offset * 60000)
+  return local.toISOString().slice(0, 16)
+}
+
 const AlurKas: React.FC = () => {
   const { state, addAlurKas, deleteAlurKas, loadAlurKas } = useFinance()
-  const [tanggal, setTanggal] = useState(() => localStorage.getItem(LAST_DATE_KEY) || '')
   const [rincian, setRincian] = useState('')
   const [jenis, setJenis] = useState<'pemasukan' | 'pengeluaran'>('pemasukan')
   const [nominal, setNominal] = useState('')
+  const [waktu, setWaktu] = useState(() => toDatetimeLocalValue(new Date()))
   const [submitting, setSubmitting] = useState(false)
 
   // filter
@@ -26,33 +30,33 @@ const AlurKas: React.FC = () => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<AlurKasItem | null>(null)
-  const [modalTanggal, setModalTanggal] = useState('')
   const [modalRincian, setModalRincian] = useState('')
   const [modalJenis, setModalJenis] = useState<'pemasukan' | 'pengeluaran'>('pemasukan')
   const [modalNominal, setModalNominal] = useState('')
+  const [modalWaktu, setModalWaktu] = useState('')
   const [modalSubmitting, setModalSubmitting] = useState(false)
 
   const openEditModal = (item: AlurKasItem) => {
     setEditingItem(item)
-    setModalTanggal(item.tanggal)
     setModalRincian(item.rincian)
     setModalJenis(item.jenis)
     setModalNominal(String(item.nominal))
+    setModalWaktu(item.created_at ? toDatetimeLocalValue(new Date(item.created_at)) : toDatetimeLocalValue(new Date()))
     setIsEditModalOpen(true)
   }
 
   const closeEditModal = () => {
     setIsEditModalOpen(false)
     setEditingItem(null)
-    setModalTanggal('')
     setModalRincian('')
     setModalJenis('pemasukan')
     setModalNominal('')
+    setModalWaktu('')
   }
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editingItem || !modalTanggal || !modalRincian.trim() || !modalNominal) return
+    if (!editingItem || !modalRincian.trim() || !modalNominal) return
     setModalSubmitting(true)
 
     const parsedNominal = Number(modalNominal.replace(/\./g, ''))
@@ -60,10 +64,10 @@ const AlurKas: React.FC = () => {
     const { error } = await supabase
       .from('alur_kas')
       .update({
-        tanggal: modalTanggal,
         rincian: modalRincian.trim(),
         jenis: modalJenis,
         nominal: parsedNominal,
+        created_at: new Date(modalWaktu).toISOString(),
       })
       .eq('id', editingItem.id)
 
@@ -87,28 +91,26 @@ const AlurKas: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!tanggal || !rincian.trim() || !nominal) return
+    if (!rincian.trim() || !nominal) return
     setSubmitting(true)
 
     const parsedNominal = Number(nominal.replace(/\./g, ''))
 
     await addAlurKas({
-      tanggal,
       rincian: rincian.trim(),
       jenis,
       nominal: parsedNominal,
+      created_at: new Date(waktu).toISOString(),
     })
-    localStorage.setItem(LAST_DATE_KEY, tanggal)
-
     setRincian('')
     setNominal('')
     setSubmitting(false)
   }
 
-  // Filter data by date range
+  // Filter data by date range (menggunakan created_at)
   const filteredList = state.alurKasList.filter((a) => {
-    if (filterMulai && a.tanggal < filterMulai) return false
-    if (filterSampai && a.tanggal > filterSampai) return false
+    if (filterMulai && a.created_at && a.created_at.slice(0, 10) < filterMulai) return false
+    if (filterSampai && a.created_at && a.created_at.slice(0, 10) > filterSampai) return false
     return true
   })
 
@@ -152,16 +154,6 @@ const AlurKas: React.FC = () => {
 
         {/* Form Input - hidden saat print */}
         <form onSubmit={handleSubmit} className="card space-y-4 print-hidden">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Tanggal</label>
-            <input
-              type="date"
-              value={tanggal}
-              onChange={(e) => setTanggal(e.target.value)}
-              className="input"
-              required
-            />
-          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Rincian</label>
             <input
@@ -213,6 +205,16 @@ const AlurKas: React.FC = () => {
               />
             </div>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Waktu Transaksi</label>
+            <input
+              type="datetime-local"
+              value={waktu}
+              onChange={(e) => setWaktu(e.target.value)}
+              className="input"
+              required
+            />
+          </div>
           <button type="submit" disabled={submitting} className="btn-primary gap-2">
             <Plus className="w-4 h-4" />
             {submitting ? 'Menyimpan...' : 'Tambah Pencatatan'}
@@ -263,7 +265,7 @@ const AlurKas: React.FC = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 dark:bg-zinc-900/50 border-b border-gray-200 dark:border-zinc-800">
-                  <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tanggal</th>
+                  <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Waktu</th>
                   <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Rincian</th>
                   <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Jenis</th>
                   <th className="text-right py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Nominal</th>
@@ -286,7 +288,16 @@ const AlurKas: React.FC = () => {
                           activeRowId === a.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                         }`}
                       >
-                        <td className="py-3 px-3 text-gray-900 dark:text-gray-200">{a.tanggal}</td>
+                        <td className="py-3 px-3">
+                          <div className="leading-tight">
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-200">
+                              {a.created_at ? new Date(a.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-'}
+                            </div>
+                            <div className="text-xs text-gray-400 dark:text-gray-500">
+                              {a.created_at ? new Date(a.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' WIB' : ''}
+                            </div>
+                          </div>
+                        </td>
                         <td className="py-3 px-3 text-gray-900 dark:text-gray-200">{a.rincian}</td>
                         <td className="py-3 px-3">
                           <span
@@ -359,16 +370,6 @@ const AlurKas: React.FC = () => {
               </div>
               <form onSubmit={handleEditSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Tanggal</label>
-                  <input
-                    type="date"
-                    value={modalTanggal}
-                    onChange={(e) => setModalTanggal(e.target.value)}
-                    className="input"
-                    required
-                  />
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Rincian</label>
                   <input
                     type="text"
@@ -418,15 +419,25 @@ const AlurKas: React.FC = () => {
                       required
                     />
                   </div>
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <button type="submit" disabled={modalSubmitting} className="btn-primary flex-1">
-                    {modalSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
-                  </button>
-                  <button type="button" onClick={closeEditModal} className="btn-secondary flex-1">
-                    Batal
-                  </button>
-                </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-gray-300">Waktu Transaksi</label>
+                    <input
+                      type="datetime-local"
+                      value={modalWaktu}
+                      onChange={(e) => setModalWaktu(e.target.value)}
+                      className="input"
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button type="submit" disabled={modalSubmitting} className="btn-primary flex-1">
+                      {modalSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
+                    </button>
+                    <button type="button" onClick={closeEditModal} className="btn-secondary flex-1">
+                      Batal
+                    </button>
+                  </div>
               </form>
             </div>
           </div>

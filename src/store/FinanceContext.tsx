@@ -161,8 +161,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'DELETE_ALL_KEBUTUHAN' })
   }, [])
 
-  const addAlurKas = useCallback(async (item: Omit<AlurKasItem, 'id' | 'created_at'>) => {
-    const newItem: AlurKasItem = { ...item, id: crypto.randomUUID(), created_at: new Date().toISOString() }
+  const addAlurKas = useCallback(async (item: Omit<AlurKasItem, 'id'>) => {
+    const newItem: AlurKasItem = { ...item, id: crypto.randomUUID(), created_at: item.created_at || new Date().toISOString() }
     const { error } = await supabase.from('alur_kas').insert(newItem)
     if (error) {
       console.error('Gagal menambah alur kas:', error.message)
