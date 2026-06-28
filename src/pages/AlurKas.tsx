@@ -8,6 +8,10 @@ function formatRp(value: number): string {
   return 'Rp ' + value.toLocaleString('id-ID')
 }
 
+function formatDateId(date: Date): string {
+  return date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
 function toDatetimeLocalValue(date: Date): string {
   const offset = date.getTimezoneOffset()
   const local = new Date(date.getTime() - offset * 60000)
@@ -131,6 +135,19 @@ const AlurKas: React.FC = () => {
   // 3. Saldo akhir = akumulasi terakhir dari data kronologis
   const saldoAkhir = currentSaldo
 
+  // Periode data untuk cetak laporan
+  let periodeAwal = ''
+  let periodeAkhir = ''
+  if (filteredList.length > 0) {
+    const dates = filteredList.filter(a => a.created_at).map(a => new Date(a.created_at!))
+    if (dates.length > 0) {
+      const minTime = Math.min(...dates.map(d => d.getTime()))
+      const maxTime = Math.max(...dates.map(d => d.getTime()))
+      periodeAwal = formatDateId(new Date(minTime))
+      periodeAkhir = formatDateId(new Date(maxTime))
+    }
+  }
+
   const handlePrint = () => {
     window.print()
   }
@@ -138,10 +155,26 @@ const AlurKas: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="print-area">
+        {/* Watermark - hanya tampil saat cetak */}
+        <div className="hidden print:block fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.07] pointer-events-none z-0">
+          <img src="/lexlogo.png" alt="Watermark" className="w-[550px] h-auto object-contain" />
+        </div>
+
+        {/* Kop Laporan - hanya tampil saat cetak */}
+        <div className="print-only text-center mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Lexray Mitra Abadi</h1>
+        </div>
+
         <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
           <Repeat className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
           Alur Kas
         </h2>
+
+        {periodeAwal && periodeAkhir && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 mb-4">
+            Periode: {periodeAwal} s/d {periodeAkhir}
+          </p>
+        )}
 
         <div className="card mt-6">
           <div className="flex items-center justify-between">
@@ -255,7 +288,7 @@ const AlurKas: React.FC = () => {
         </div>
 
         {/* Tabel */}
-        <div className="card">
+        <div className="card relative z-10">
           <h3 className="text-sm font-semibold text-gray-900 mb-4 dark:text-gray-200">
             {filterMulai || filterSampai
               ? `Riwayat Alur Kas (${filterMulai || '...'} s/d ${filterSampai || '...'})`
@@ -264,6 +297,7 @@ const AlurKas: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
+                <tr className="hidden print:table-row print-spacer"><td colSpan={5}></td></tr>
                 <tr className="bg-gray-50 dark:bg-zinc-900/50 border-b border-gray-200 dark:border-zinc-800">
                   <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Waktu</th>
                   <th className="text-left py-3 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Rincian</th>
@@ -442,6 +476,9 @@ const AlurKas: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Page counter - hanya tampil saat cetak */}
+        <div className="hidden print:block fixed bottom-4 right-6 text-xs text-gray-400 font-sans page-number-print" />
       </div>
     </div>
   )

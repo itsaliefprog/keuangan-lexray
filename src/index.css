@@ -40,12 +40,21 @@
   .input {
     @apply flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900 dark:border-zinc-700 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus-visible:ring-emerald-400;
   }
+
+  .print-only {
+    display: none;
+  }
 }
 
 @media print {
+  @page {
+    margin: 1cm 1.5cm 1.5cm 1.5cm;
+  }
+
   body {
     background: white !important;
     color: black !important;
+    counter-reset: page_counter;
   }
 
   aside,
@@ -54,21 +63,43 @@
     display: none !important;
   }
 
-  .print-area {
-    margin: 0 !important;
-    padding: 0 !important;
+  .print-only {
+    display: block !important;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr.print-spacer {
+    display: table-row !important;
+    height: 30px;
+  }
+
+  .page-number-print {
+    counter-increment: page_counter;
+  }
+
+  .page-number-print::after {
+    content: "Halaman " counter(page_counter);
   }
 
   .card {
     border: none !important;
     box-shadow: none !important;
-    background: white !important;
+    background: transparent !important;
     padding: 0 !important;
   }
 
   table {
     border-collapse: collapse;
     width: 100%;
+  }
+
+  table, tr, td, th, tbody, thead {
+    background-color: transparent !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   th {
